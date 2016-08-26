@@ -14,6 +14,7 @@ from multiprocessing import Pool
 import os
 import re
 import time
+import yaml
 
 def get_project_limits(project):
 
@@ -54,16 +55,31 @@ def list_projects():
         raise RuntimeError("Decoding JSON")
 
 
+def LoadConfig(config_file):
+    try:
+        fd = open(config_file, 'r')
+        cfg = yaml.load(fd)
+
+        return cfg
+
+    except IOError as e:
+        print "Error reading configuration file (%s), %s" % (config_file, e.strerror)
+        raise
+
+
 if __name__ == '__main__':
 
-    os.environ['OS_AUTH_URL'] = 'https://keystone.br-sp1.openstack.uolcloud.com.br:5000/v2.0'
-    os.environ['OS_USERNAME'] = 'graphite'
-    os.environ['OS_PASSWORD'] = 'https://keystone.br-sp1.openstack.uolcloud.com.br:5000/v2.0'
+    # load config file
+    SystemConfig = LoadConfig('etc/system.conf')
 
-    graphite_host       = 'd3-zcarbon1.host.intranet'
-    graphite_prefix     = 'prod.openstack.GT.D4-UCOS.projects'
-    collect_interval    = 900
-    collect_processes   = 4
+    os.environ['OS_AUTH_URL'] = SystemConfig['openstack']['url']
+    os.environ['OS_USERNAME'] = SystemConfig['openstack']['username']
+    os.environ['OS_PASSWORD'] = SystemConfig['openstack']['password']
+
+    graphite_host       = SystemConfig['graphite']['host']
+    graphite_prefix     = SystemConfig['graphite']['prefix']
+    collect_interval    = SystemConfig['collection']['interval']
+    collect_processes   = SystemConfig['collection']['processes']
 
     g = graphitesend.init(graphite_server=graphite_host, prefix=graphite_prefix, system_name='')
 
