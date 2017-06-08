@@ -127,8 +127,6 @@ def handler(signum, frame):
 
 if __name__ == '__main__':
 
-
-    signal.signal(signal.SIGTERM, handler)
     keep_running = 1
 
     # load config file
@@ -169,6 +167,8 @@ if __name__ == '__main__':
 
     pool = Pool(processes=collect_processes)
 
+    signal.signal(signal.SIGTERM, handler)
+
     while keep_running:
 
         logger.info("Starting collection")
@@ -182,14 +182,19 @@ if __name__ == '__main__':
 
         for res in multiple_results:
             if keep_running <= 0:
+                pool.close()
                 break
 
             tenants += 1
-            for metric in res.get():
-                if not metric['Name'] in totals:
-                    totals[metric['Name']] = metric['Value']
-                else:
-                    totals[metric['Name']] += metric['Value']
+            try:
+                for metric in res.get():
+                    if not metric['Name'] in totals:
+                        totals[metric['Name']] = metric['Value']
+                    else:
+                        totals[metric['Name']] += metric['Value']
+            except Exception as e:
+                print "Error fetching data, %s" % (e.strerror)
+                raise
 
         for metric in totals:
             g.send("_Root.%s" % metric,  totals[metric])
@@ -210,3 +215,5 @@ if __name__ == '__main__':
         logger.info("Sleeping for %d seconds" % toSleep)
 
         time.sleep(toSleep)
+
+    logger.info("Exiting..." % toSleep)
